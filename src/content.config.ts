@@ -15,4 +15,26 @@ const blog = defineCollection({
 	}),
 });
 
-export const collections = { blog };
+const videos = defineCollection({
+        loader: glob({ base: './src/content/videos', pattern: '**/*.mdx' }),
+        schema: ({ image }) =>
+                z.object({
+                        title: z.string(),
+                        date: z.coerce.date(),
+                        tags: z.array(z.string()).optional(),
+                        heroImage: image().optional(),
+                }),
+});
+
+const resources = defineCollection({
+        loader: glob({ base: './src/content/resources', pattern: '**/*.mdx' }),
+        schema: ({ image }) =>
+                z.object({
+                        title: z.string(),
+                        date: z.coerce.date(),
+                        tags: z.array(z.string()).optional(),
+                        heroImage: image().optional(),
+                }),
+});
+
+export const collections = { blog, videos, resources };
