@@ -1,0 +1,22 @@
+---
+interface Props {
+    videoId: string;
+}
+
+const { videoId } = Astro.props;
+const thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+const url = `https://www.youtube.com/watch?v=${videoId}`;
+---
+
+<a href={url} target="_blank" rel="noopener noreferrer" class="yt-thumb">
+    <img src={thumbnail} alt="Watch on YouTube" loading="lazy" />
+</a>
+
+<style>
+    .yt-thumb img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 8px;
+    }
+</style>
