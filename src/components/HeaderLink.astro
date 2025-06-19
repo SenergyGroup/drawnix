@@ -1,12 +1,23 @@
 ---
+// src/components/HeaderLink.astro
 import type { HTMLAttributes } from 'astro/types';
 
 type Props = HTMLAttributes<'a'>;
 
 const { href, class: className, ...props } = Astro.props;
-const pathname = Astro.url.pathname.replace(import.meta.env.BASE_URL, '');
-const subpath = pathname.match(/[^\/]+/g);
-const isActive = href === pathname || href === '/' + (subpath?.[0] || '');
+
+// Normalize current path for robust matching
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, ''); // Remove trailing slash from base
+let currentPathname = Astro.url.pathname.replace(basePath, '').replace(/\/$/, ''); // Remove base and trailing slash
+if (currentPathname === '') currentPathname = '/'; // Ensure root is '/'
+
+// Normalize href for robust matching
+let linkHref = (href as string).replace(/\/$/, '');
+if (linkHref === '') linkHref = '/';
+
+const isActive =
+  linkHref === currentPathname || // Exact match
+  (linkHref !== '/' && currentPathname.startsWith(linkHref + '/')); // Parent path matches (e.g., /blog active for /blog/post)
 ---
 
 <a href={href} class:list={[className, { active: isActive }]} {...props}>
@@ -16,9 +27,18 @@ const isActive = href === pathname || href === '/' + (subpath?.[0] || '');
 	a {
 		display: inline-block;
 		text-decoration: none;
+		/* General link color is set by Header.astro's :global(a) style */
 	}
 	a.active {
-		font-weight: bolder;
-		text-decoration: underline;
+		/*
+		  The visual styling for 'active' is now primarily handled in Header.astro
+		  for better context-specific control (e.g., .main-navigation :global(a.active)).
+		  You can keep a subtle default here if HeaderLink is used in other contexts,
+		  or leave it to be styled entirely by the parent.
+		  For the Drawnix header, we want the color to be var(--heading-color) and possibly font-weight: 700.
+		  Header.astro's .main-navigation :global(a.active) handles this.
+		*/
+		/* Example: font-weight: 700; */
+        /* text-decoration: underline; */ /* Remove if you don't want underline */
 	}
 </style>

@@ -3,47 +3,227 @@ import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+
+// Paths to your images in the public directory
+const thermometerImg = "/images/thermometer.png";
+const videoPlaceholderImg = "/images/video-placeholder.png";
+const flowchartIcon = "/images/icon-flowchart.svg";
+const checklistIcon = "/images/icon-checklist.svg";
+const lightbulbIcon = "/images/icon-lightbulb.svg";
 ---
 
 <!doctype html>
 <html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main>
-			<h1>🧑‍🚀 Hello, Astronaut!</h1>
-			<p>
-				Welcome to the official <a href="https://astro.build/">Astro</a> blog starter template. This
-				template serves as a lightweight, minimally-styled starting point for anyone looking to build
-				a personal website, blog, or portfolio with Astro.
-			</p>
-			<p>
-				This template comes with a few integrations already configured in your
-				<code>astro.config.mjs</code> file. You can customize your setup with
-				<a href="https://astro.build/integrations">Astro Integrations</a> to add tools like Tailwind,
-				React, or Vue to your project.
-			</p>
-			<p>Here are a few ideas on how to get started with the template:</p>
-			<ul>
-				<li>Edit this page in <code>src/pages/index.astro</code></li>
-				<li>Edit the site header items in <code>src/components/Header.astro</code></li>
-				<li>Add your name to the footer in <code>src/components/Footer.astro</code></li>
-				<li>Check out the included blog posts in <code>src/content/blog/</code></li>
-				<li>Customize the blog post page layout in <code>src/layouts/BlogPost.astro</code></li>
-			</ul>
-			<p>
-				Have fun! If you get stuck, remember to
-				<a href="https://docs.astro.build/">read the docs</a>
-				or <a href="https://astro.build/chat">join us on Discord</a> to ask questions.
-			</p>
-			<p>
-				Looking for a blog template with a bit more personality? Check out
-				<a href="https://github.com/Charca/astro-blog-template">astro-blog-template</a>
-				by <a href="https://twitter.com/Charca">Maxi Ferreira</a>.
-			</p>
-		</main>
-		<Footer />
-	</body>
+<head>
+  <BaseHead 
+    title={`${SITE_TITLE} - Building a $50k Digital Business`} 
+    description={SITE_DESCRIPTION} 
+  />
+  <style is:global> /* Using is:global for page-specific section styles, can also be <style> in .astro */
+    .hero-section {
+      padding: 4rem 0; /* Vertical padding */
+      display: grid;
+      grid-template-columns: 1fr; /* Default to single column for mobile */
+      align-items: center;
+      gap: 2rem;
+      min-height: calc(80vh - 100px); /* Adjust based on header height */
+    }
+    .hero-content h1 {
+      font-size: clamp(2.5rem, 5vw, 3.75rem); /* Responsive font size */
+      line-height: 1.1;
+      margin-bottom: 0.75em;
+    }
+    .hero-content p {
+      font-size: 1.1rem;
+      margin-bottom: 1.5em;
+      max-width: 60ch; /* Limit line length for readability */
+    }
+    .hero-image {
+      text-align: center; /* Center image if it's smaller than container */
+    }
+    .hero-image img {
+      max-width: 280px; /* Control size of thermometer */
+      margin: 0 auto;
+    }
+
+    /* Layout for larger screens */
+    @media (min-width: 769px) {
+      .hero-section {
+        grid-template-columns: 2fr 1fr; /* Text on left, image on right */
+        gap: 3rem;
+      }
+      .hero-image {
+        text-align: right; /* Align image to the right */
+      }
+    }
+    
+    .content-section {
+      padding: 3rem 0;
+    }
+    .section-title {
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      margin-bottom: 1.5em;
+      text-align: left; /* As per design */
+    }
+
+    .easel-grid {
+      display: grid;
+      grid-template-columns: 1fr; /* Mobile first */
+      gap: 2rem;
+      align-items: center;
+    }
+    .video-placeholder {
+      background-color: #333; /* Dark background for video area */
+      border: 2px solid var(--card-border-color);
+      border-radius: 8px;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden; /* If using an img tag that might be too big */
+      position: relative;
+    }
+    .video-placeholder img { /* If using an image as placeholder */
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .video-play-button-mockup { /* Simple play button visual */
+        width: 70px;
+        height: 70px;
+        background-color: rgba(255,255,255,0.8);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute; /* Overlay on video placeholder */
+    }
+    .video-play-button-mockup::after {
+        content: '';
+        display: block;
+        width: 0;
+        height: 0;
+        border-top: 15px solid transparent;
+        border-bottom: 15px solid transparent;
+        border-left: 25px solid #333;
+        margin-left: 5px;
+    }
+
+    .easel-content h3 {
+      font-size: 1.75rem;
+      margin-top: 0;
+    }
+    
+    @media (min-width: 769px) {
+      .easel-grid {
+        grid-template-columns: 1fr 1fr; /* Video left, text right */
+      }
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .tool-card {
+      background-color: var(--card-bg-color);
+      border: 2px solid var(--card-border-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .tool-card-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .tool-card-icon img {
+      width: 48px; /* Size of icons */
+      height: 48px;
+    }
+    .tool-card h4 {
+      font-size: 1.25rem;
+      margin: 0;
+    }
+    .tool-card p {
+      font-size: 0.95rem;
+      flex-grow: 1; /* Pushes button to bottom */
+      margin-bottom: 1.5rem;
+    }
+    .tool-card .btn {
+      width: 100%; /* Button takes full width of card */
+      margin-top: auto; /* Pushes button to bottom if p doesn't fill space */
+    }
+
+  </style>
+</head>
+<body>
+  <Header />
+  <main>
+    <div class="container">
+      <section class="hero-section">
+        <div class="hero-content">
+          <h1>Follow My Journey: Building a $50k Digital Business From Scratch.</h1>
+          <p>
+            Join me as-build a digital business from $0, sharing every step, tool, and lesson along the way. Learn beside me and grab some free resources for your own journey.
+          </p>
+          <a href="#subscribe" class="btn">Join the Journey (Get Updates & Tools)</a>
+        </div>
+        <div class="hero-image">
+          <img src={thermometerImg} alt="Business growth thermometer graphic" />
+        </div>
+      </section>
+
+      <section class="content-section easel-section">
+        <h2 class="section-title">Fresh Off the Easel!</h2>
+        <div class="easel-grid">
+          <div class="video-placeholder">
+            <img src={videoPlaceholderImg} alt="Latest video content placeholder" />
+            <div class="video-play-button-mockup" aria-label="Play video"></div>
+          </div>
+          <div class="easel-content">
+            <h3>Creating Content with AI Latest Progress</h3>
+            <p>
+              See what I've been working on and discover the AI tool I used in this latest update.
+            </p>
+            <a href="#latest-video" class="btn">Watch & Get the Tool</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-section tools-section">
+        <h2 class="section-title">Grab Your Free Tools!</h2>
+        <div class="tools-grid">
+          <article class="tool-card">
+            <div class="tool-card-header">
+              <div class="tool-card-icon"><img src={flowchartIcon} alt="Flowchart icon" /></div>
+              <h4>AI Decision Flowchart</h4>
+            </div>
+            <p>Visualize your choices ad paths</p>
+            <a href="#tool-flowchart" class="btn">Get Tool</a>
+          </article>
+          <article class="tool-card">
+            <div class="tool-card-header">
+              <div class="tool-card-icon"><img src={checklistIcon} alt="Checklist icon" /></div>
+              <h4>Productivity Checklist</h4>
+            </div>
+            <p>Boost your efficiency with this handy checklist</p>
+            <a href="#tool-checklist" class="btn">Get Tool</a>
+          </article>
+          <article class="tool-card">
+            <div class="tool-card-header">
+              <div class="tool-card-icon"><img src={lightbulbIcon} alt="Lightbulb icon" /></div>
+              <h4>Brainstorming Guide</h4>
+            </div>
+            <p>A guide to generating ideas as creative solutions</p>
+            <a href="#tool-guide" class="btn">Get Tool</a>
+          </article>
+        </div>
+      </section>
+    </div>
+  </main>
+  <Footer />
+</body>
 </html>
