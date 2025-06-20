@@ -9,6 +9,12 @@ import FormattedDate from '../components/FormattedDate.astro';
 import { Image } from 'astro:assets';
 
 const posts = (await getCollection('videos')).sort((a,b) => b.data.date.valueOf() - a.data.date.valueOf());
+console.log('--- DEBUG: Videos List Page ---');
+if (posts.length > 0) {
+    console.log('First video post.id:', posts[0].id);
+    console.log('First video post.slug:', posts[0].slug);
+}
+console.log('--- END DEBUG: Videos List Page ---');
 const pageTitle = `${SITE_TITLE} | Videos`;
 const pageDescription = "Check out the latest videos from " + SITE_TITLE; // Or a more specific description
 ---
@@ -131,7 +137,7 @@ const pageDescription = "Check out the latest videos from " + SITE_TITLE; // Or 
                 {
                     posts.map(post => (
                         <li class="video-list-item">
-                            <a href={`/videos/${post.id}/`}> {/* Use post.slug for Astro content collections */}
+                            <a href={`/videos/${post.slug}/`}> {/* Use post.slug for Astro content collections */}
                                 {post.data.heroImage && (
                                     <div class="video-thumbnail-container">
                                         <Image

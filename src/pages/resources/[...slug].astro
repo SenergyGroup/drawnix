@@ -1,0 +1,37 @@
+---
+// src/pages/resources/[...slug].astro
+import { getCollection, getEntry } from 'astro:content';
+// Replace with your actual layout for resource posts
+import ResourcePostLayout from '../../layouts/ResourcePost.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('resources'); // Get 'resources' collection
+  return posts.map((post) => ({
+    params: { slug: post.slug }, // Use post.slug for the URL parameter
+    props: { entrySlug: post.slug }, // Pass post.slug
+  }));
+}
+
+const { entrySlug } = Astro.props;
+const post = await getEntry('resources', entrySlug); // Get from 'resources' collection
+
+if (!post) {
+  return new Response(null, { status: 404, statusText: `Not Found (resource entry: ${entrySlug})` });
+}
+
+// Optional: Add debug log to verify
+console.log('--- DEBUG: Individual Resource Post ---');
+console.log('Fetching resource with entrySlug:', entrySlug);
+if (post) {
+    console.log('Post ID:', post.id);
+    console.log('Post Slug:', post.slug);
+    console.log('Does post have .render method?', typeof post.render === 'function');
+}
+console.log('--- END DEBUG: Individual Resource Post ---');
+
+const { Content } = await post.render();
+---
+
+<ResourcePostLayout {...post.data}> {/* Use your resource post layout and pass frontmatter */}
+  <Content />
+</ResourcePostLayout>

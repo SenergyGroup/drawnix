@@ -1,9 +1,8 @@
-import { glob } from 'astro/loaders';
 import { defineCollection, z } from 'astro:content';
 
 const blog = defineCollection({
 	// Load Markdown and MDX files in the `src/content/blog/` directory.
-	loader: glob({ base: './src/content/blog', pattern: '**/*.{md,mdx}' }),
+	//loader: glob({ base: './src/content/blog', pattern: '**/*.{md,mdx}' }),
 	// Type-check frontmatter using a schema
 	schema: ({ image }) => z.object({
 		title: z.string(),
@@ -16,7 +15,8 @@ const blog = defineCollection({
 });
 
 const videos = defineCollection({
-        loader: glob({ base: './src/content/videos', pattern: '**/*.mdx' }),
+        // REMOVE OR COMMENT OUT THIS LINE:
+        // loader: glob({ base: './src/content/videos', pattern: '**/*.mdx' }),
         schema: ({ image }) =>
                 z.object({
                         title: z.string(),
@@ -27,7 +27,7 @@ const videos = defineCollection({
 });
 
 const resources = defineCollection({
-        loader: glob({ base: './src/content/resources', pattern: '**/*.mdx' }),
+        //loader: glob({ base: './src/content/resources', pattern: '**/*.mdx' }),
         schema: ({ image }) =>
                 z.object({
                         title: z.string(),
@@ -37,4 +37,17 @@ const resources = defineCollection({
                 }),
 });
 
-export const collections = { blog, videos, resources };
+const testCollectionDefinition = defineCollection({ // Renamed variable for clarity, not strictly necessary
+  // For 'test' collection, you don't need a loader if files are directly in src/content/test/
+  // Astro will find them by convention.
+  schema: z.object({
+    title: z.string(),
+  }),
+});
+
+export const collections = {
+  'blog': blog, // Explicitly using string keys for clarity, but { blog } works too
+  'videos': videos,
+  'resources': resources,
+  'test': testCollectionDefinition, // <<<<< CHANGE THIS LINE
+};

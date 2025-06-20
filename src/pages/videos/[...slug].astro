@@ -7,29 +7,38 @@ import VideoPost from '../../layouts/VideoPost.astro';
 export async function getStaticPaths() {
   const posts = await getCollection('videos');
   return posts.map((post) => ({
-    params: { slug: post.id }, // Use post.id for the slug parameter
-    // We only need to pass the identifier for getEntry, not the whole post object
-    props: { entryId: post.id },
+    // Use post.slug for the URL parameter
+    params: { slug: post.slug }, // e.g., "example-video"
+    // Pass post.slug to be used by getEntry
+    props: { entrySlug: post.slug }, // Changed prop name for clarity
   }));
 }
 
 // Get the id from props (passed from getStaticPaths)
-const { entryId } = Astro.props;
+const { entrySlug } = Astro.props; // Use the new prop name
 
 // Fetch the specific entry using its ID.
 // The second argument to getEntry is the slug/id of the entry.
-const post = await getEntry('videos', entryId);
+const post = await getEntry('videos', entrySlug); // e.g., getEntry('videos', 'example-video')
 
 // Handle cases where the entry might not be found (optional, but good practice)
 if (!post) {
-  // You could return a 404 response or redirect
-  // For simplicity, this example doesn't, but Astro might 404 automatically
-  // if getEntry returns undefined. Better to be explicit:
-  return new Response(null, { status: 404, statusText: 'Not Found' });
+  return new Response(null, { status: 404, statusText: `Not Found (video entry: ${entrySlug})` });
 }
 
-// Now, 'post' obtained from getEntry should be a complete CollectionEntry
-// with a .render() method (assuming MDX integration is correct)
+// --- DEBUG LOGS (can be kept or removed once working) ---
+console.log('--- DEBUG: Individual Video Post (Using Slug) ---');
+console.log('Fetching video with entrySlug:', entrySlug);
+console.log('Post object found:', !!post);
+if (post) {
+    console.log('Post ID:', post.id); // Will be "example-video.mdx"
+    console.log('Post Slug:', post.slug); // Will be "example-video"
+    console.log('Post Keys:', Object.keys(post));
+    console.log('Does post have .render method?', typeof post.render === 'function');
+}
+console.log('--- END DEBUG: Individual Video Post (Using Slug) ---');
+// --- END DEBUG LOGS ---
+
 const { Content } = await post.render();
 ---
 

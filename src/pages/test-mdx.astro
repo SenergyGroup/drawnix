@@ -1,0 +1,45 @@
+---
+import { getEntry } from 'astro:content';
+
+// Fetch the minimal entry
+const entry = await getEntry('test', 'minimal');
+
+if (!entry) {
+  return new Response("Minimal entry not found", { status: 404 });
+}
+
+let ContentComponent;
+let renderError = null;
+
+try {
+  console.log('Attempting to render entry:', entry.id);
+  console.log('Entry object keys:', Object.keys(entry));
+  console.log('Does entry have .render method?', typeof entry.render === 'function');
+
+  if (typeof entry.render === 'function') {
+    const { Content } = await entry.render();
+    ContentComponent = Content;
+  } else {
+    renderError = 'entry.render is not a function. Entry type: ' + typeof entry.render;
+    console.error(renderError, entry);
+  }
+} catch (e) {
+  renderError = 'Error during entry.render(): ' + e.message;
+  console.error(renderError, e);
+}
+---
+
+<html lang="en">
+<head>
+  <title>MDX Test</title>
+</head>
+<body>
+  <h1>Minimal MDX Test Page</h1>
+  {renderError && <p style="color: red;"><strong>Error:</strong> {renderError}</p>}
+  {ContentComponent && <ContentComponent />}
+  {!ContentComponent && !renderError && <p>Content component not available, but no direct render error.</p>}
+
+  <h2>Raw Entry Data (for debugging):</h2>
+  <pre>{JSON.stringify(entry, (key, value) => typeof value === 'function' ? `[Function ${key}]` : value, 2)}</pre>
+</body>
+</html>
