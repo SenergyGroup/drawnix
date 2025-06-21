@@ -1,0 +1,590 @@
+---
+// src/components/ArchetypeQuiz.astro
+import { questions, archetypes, combinationsData, getCombinationKey } from '../data/quizData.js';
+---
+
+<!-- ... your existing HTML structure for the quiz ... -->
+<div id="archetypeQuiz" class="archetype-quiz-container">
+  <form id="quizForm" class="quiz-form">
+    {questions.map((question, qIndex) => (
+      <fieldset key={question.id} class="quiz-question-group">
+        <legend class="quiz-question-legend">
+          {`Question ${qIndex + 1}: ${question.text}`}
+        </legend>
+        <div class="quiz-options-container">
+          {question.options.map((option, oIndex) => (
+            <label
+              for={`q${question.id}-o${oIndex}`}
+              class="quiz-option-label"
+            >
+              <input
+                type="checkbox"
+                id={`q${question.id}-o${oIndex}`}
+                name={`question-${question.id}`}
+                value={option.archetype}
+                class="quiz-checkbox"
+              />
+              <span class="quiz-option-text">{option.text}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    ))}
+    <div class="quiz-actions">
+        <button type="submit" id="getResultsBtn" class="quiz-button quiz-button-submit">
+            Discover Your Archetypes
+        </button>
+        <button type="button" id="resetQuizBtn" class="quiz-button quiz-button-reset">
+            Reset Quiz
+        </button>
+    </div>
+  </form>
+
+  <div id="quizResults" class="quiz-results-container hidden animate-fadeIn">
+    <h2 id="resultTitle" class="quiz-result-title">Your Archetype Result</h2>
+    <p id="resultSummary" class="quiz-result-summary"></p>
+    <div id="allScores" class="quiz-all-scores">
+        <h3 class="quiz-scores-subtitle">Your Archetype Scores:</h3>
+        <ul id="scoreList" class="quiz-score-list"></ul>
+    </div>
+
+    <!-- NEW: PDF Download Section -->
+    <div id="pdfDownloadSection" class="pdf-download-section hidden">
+        <button id="showPdfFormBtn" class="quiz-button quiz-button-primary">
+            Download Full PDF Guide
+        </button>
+        <form id="pdfEmailForm" class="pdf-email-form hidden">
+            <p class="pdf-form-intro">Enter your email to receive the full PDF guide:</p>
+            <div class="pdf-form-field">
+                <label for="pdfEmailInput" class="sr-only">Your Email Address</label>
+                <input type="email" id="pdfEmailInput" placeholder="you@example.com" required class="pdf-email-input"/>
+            </div>
+            <button type="submit" id="sendPdfBtn" class="quiz-button quiz-button-submit">Send PDF to My Email</button>
+            <button type="button" id="cancelPdfFormBtn" class="quiz-button quiz-button-cancel">Cancel</button>
+            <p id="pdfFormMessage" class="pdf-form-message"></p>
+        </form>
+    </div>
+    <!-- END NEW -->
+  </div>
+</div>
+
+<style>
+  /* Basic Reset & Variables (adjust colors to your site's theme) */
+  :root {
+    --quiz-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    --quiz-text-color: #333;
+    --quiz-bg-color: #fff; /* Main page background */
+    --quiz-border-color: #ddd;
+    --quiz-primary-color: #007bff;
+    --quiz-primary-text-color: #fff;
+    --quiz-secondary-color: #6c757d;
+    --quiz-secondary-text-color: #fff;
+    --quiz-option-bg: #f8f9fa; /* Fieldset background (the grey box) */
+    --quiz-option-border: #e9ecef;
+    --quiz-option-hover-bg: #e9ecef;
+    --quiz-option-checked-bg: #cfe2ff;
+    --quiz-option-checked-border: #9ec5fe;
+
+    /* New variables for the legend tab */
+    --quiz-legend-bg: var(--quiz-bg-color); /* Legend tab background matches page background */
+    --quiz-legend-text-color: var(--quiz-text-color); /* Text color for legend */
+    --quiz-legend-border-color: var(--quiz-border-color); /* Border for the legend tab */
+
+    /* Dark Mode (Optional) ... */
+  }
+
+    /* NEW STYLES for PDF Download Section */
+  .pdf-download-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--quiz-border-color);
+    text-align: center;
+  }
+
+  .pdf-email-form {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background-color: var(--quiz-option-bg); /* Light grey, similar to question groups */
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 400px; /* Constrain form width */
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .pdf-form-intro {
+    font-size: 1rem;
+    color: var(--quiz-text-color);
+    margin-bottom: 0.5rem;
+  }
+
+  .pdf-form-field {
+    width: 100%;
+  }
+
+  .pdf-email-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid var(--quiz-input-border);
+    border-radius: 6px;
+    background-color: var(--quiz-input-bg);
+    color: var(--quiz-text-color);
+    box-sizing: border-box; /* Important for width and padding */
+  }
+  .pdf-email-input:focus {
+    outline: none;
+    border-color: var(--quiz-input-focus-border);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--quiz-input-focus-border) 20%, transparent);
+  }
+  .pdf-email-input::placeholder {
+    color: color-mix(in srgb, var(--quiz-text-color) 60%, transparent);
+  }
+
+    .quiz-button-primary { /* For the initial "Download Full PDF Guide" button */
+    background-color: var(--quiz-primary-color);
+    color: var(--quiz-primary-text-color);
+  }
+  .quiz-button-primary:hover {
+    background-color: color-mix(in srgb, var(--quiz-primary-color) 90%, black);
+  }
+  .quiz-button-cancel {
+    background-color: var(--quiz-secondary-color);
+    color: var(--quiz-secondary-text-color);
+    opacity: 0.8;
+  }
+  .quiz-button-cancel:hover {
+    background-color: color-mix(in srgb, var(--quiz-secondary-color) 90%, black);
+    opacity: 1;
+  }
+
+
+  .pdf-form-message {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    min-height: 1.2em; /* Reserve space to prevent layout jumps */
+  }
+  .pdf-form-message.success {
+    color: var(--quiz-success-color);
+  }
+  .pdf-form-message.error {
+    color: var(--quiz-error-color);
+  }
+
+  .sr-only { /* For accessibility, hides element visually but not from screen readers */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* ... other existing styles ... */
+  .archetype-quiz-container {
+    font-family: var(--quiz-font-family);
+    color: var(--quiz-text-color);
+    background-color: var(--quiz-bg-color);
+    max-width: 768px;
+    margin: 2rem auto;
+    padding: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .archetype-quiz-container {
+      padding: 1.5rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .archetype-quiz-container {
+      padding: 2rem;
+    }
+  }
+
+  .quiz-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* Let margin on quiz-question-group handle spacing */
+  }
+
+  .quiz-question-legend {
+    font-size: 1.15rem; /* Slightly larger for better presence */
+    font-weight: 600;
+    line-height: 1.4; /* Adjust for good text flow within padding */
+    color: var(--quiz-legend-text-color);
+
+    background-color: var(--quiz-legend-bg); /* Match page background for "cut-out" effect */
+    padding: 0.5em 1em; /* Padding within the legend tab (em makes it relative to font-size) */
+    
+    margin-left: 1.5rem; /* How far the tab starts from the left edge of the fieldset border */
+    margin-bottom: 1.25rem; /* Space between the legend tab and the first answer option */
+
+    /* Style legend as a bordered tab */
+    border: 1px solid var(--quiz-legend-border-color);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    /* The legend naturally interrupts the fieldset's top border.
+       Its own border makes it a defined shape. */
+  }
+
+  .quiz-question-group {
+    border: 1px solid var(--quiz-border-color);
+    border-radius: 12px;
+    padding: 1.5rem; /* Padding for the content *inside* the fieldset (around options) */
+    background-color: var(--quiz-option-bg); /* The grey background for the answers area */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    /* Increased margin-top to provide space for the legend tab of the current question
+       so it doesn't overlap with the content of the question group above it. */
+    margin-top: 3rem; 
+  }
+  /* First question group might not need that much top margin if there's nothing above it */
+  .quiz-form > .quiz-question-group:first-child {
+    margin-top: 1.5rem; /* Or adjust as needed, can be smaller */
+  }
+
+
+  .quiz-options-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .quiz-option-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background-color: var(--quiz-bg-color); /* Options background, could be --quiz-option-bg for less contrast */
+    border: 1px solid var(--quiz-option-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  }
+
+  .quiz-option-label:hover {
+    background-color: var(--quiz-option-hover-bg);
+    border-color: var(--quiz-primary-color);
+  }
+
+  .quiz-checkbox {
+    accent-color: var(--quiz-primary-color);
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.125rem;
+    flex-shrink: 0;
+  }
+
+  .quiz-option-label:has(.quiz-checkbox:checked) {
+    background-color: var(--quiz-option-checked-bg);
+    border-color: var(--quiz-option-checked-border);
+  }
+
+  .quiz-option-text {
+    color: var(--quiz-text-color);
+    line-height: 1.5;
+  }
+
+  .quiz-actions {
+    margin-top: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (min-width: 640px) {
+    .quiz-actions {
+      flex-direction: row;
+    }
+  }
+
+  .quiz-button {
+    width: 100%;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+  }
+   @media (min-width: 640px) {
+    .quiz-button {
+      width: auto;
+    }
+  }
+
+  .quiz-button-submit {
+    background-color: var(--quiz-primary-color);
+    color: var(--quiz-primary-text-color);
+  }
+  .quiz-button-submit:hover {
+    background-color: color-mix(in srgb, var(--quiz-primary-color) 90%, black);
+  }
+
+  .quiz-button-reset {
+    background-color: var(--quiz-secondary-color);
+    color: var(--quiz-secondary-text-color);
+  }
+   .quiz-button-reset:hover {
+    background-color: color-mix(in srgb, var(--quiz-secondary-color) 90%, black);
+  }
+
+  .quiz-results-container {
+    margin-top: 3rem;
+    padding: 1.5rem;
+    border: 2px solid var(--quiz-primary-color);
+    border-radius: 12px;
+    background-color: color-mix(in srgb, var(--quiz-primary-color) 10%, var(--quiz-bg-color) 90%);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  }
+  @media (min-width: 768px) {
+    .quiz-results-container {
+      padding: 2rem;
+    }
+  }
+
+  .quiz-result-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--quiz-primary-color);
+    margin-bottom: 1rem;
+  }
+
+  .quiz-result-summary {
+    font-size: 1.125rem;
+    color: var(--quiz-text-color);
+    line-height: 1.6;
+  }
+
+  .quiz-all-scores {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--quiz-border-color);
+  }
+
+  .quiz-scores-subtitle {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--quiz-text-color);
+    margin-bottom: 0.5rem;
+  }
+
+  .quiz-score-list {
+    list-style-type: disc;
+    list-style-position: inside;
+    color: var(--quiz-text-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+</style>
+
+<script is:inline define:vars={{ initialArchetypes: archetypes, combinationsData, questionsData: questions }}>
+  // ... (your existing getCombinationKey function and DOMContentLoaded start) ...
+  function getCombinationKey(arch1, arch2) {
+    if (!arch1 || !arch2) return null;
+    return [arch1, arch2].sort().join('-');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // ... (your existing const declarations for quizForm, resultsDiv, etc.) ...
+    const quizForm = document.getElementById('quizForm');
+    const resultsDiv = document.getElementById('quizResults');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSummary = document.getElementById('resultSummary');
+    const getResultsBtn = document.getElementById('getResultsBtn');
+    const resetQuizBtn = document.getElementById('resetQuizBtn');
+    const allScoresDiv = document.getElementById('allScores');
+    const scoreList = document.getElementById('scoreList');
+
+    // NEW: PDF Download Elements
+    const pdfDownloadSection = document.getElementById('pdfDownloadSection');
+    const showPdfFormBtn = document.getElementById('showPdfFormBtn');
+    const pdfEmailForm = document.getElementById('pdfEmailForm');
+    const pdfEmailInput = document.getElementById('pdfEmailInput');
+    const sendPdfBtn = document.getElementById('sendPdfBtn');
+    const cancelPdfFormBtn = document.getElementById('cancelPdfFormBtn');
+    const pdfFormMessage = document.getElementById('pdfFormMessage');
+
+    let currentArchetypeResultTitle = ''; // To store the result title
+
+    if (!quizForm || !resultsDiv /* ... include all original elements ... */ ||
+        !pdfDownloadSection || !showPdfFormBtn || !pdfEmailForm || !pdfEmailInput || !sendPdfBtn || !cancelPdfFormBtn || !pdfFormMessage ) {
+        console.error("Quiz or PDF component elements not found. Check IDs.");
+        return;
+    }
+
+    quizForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      // ... (existing score calculation logic) ...
+      const scores = {};
+      initialArchetypes.forEach(arch => scores[arch] = 0);
+
+      const checkedBoxes = quizForm.querySelectorAll('input[type="checkbox"]:checked');
+      if (checkedBoxes.length === 0) {
+        // ... (existing no-selection handling) ...
+        resultTitle.textContent = "Oops!";
+        resultSummary.innerHTML = `<p>Please select some options to discover your archetypes.</p><p>Try to choose at least a few answers that resonate with you across the questions.</p>`;
+        scoreList.innerHTML = '';
+        allScoresDiv.style.display = 'none';
+        pdfDownloadSection.classList.add('hidden'); // Hide PDF section too
+        resultsDiv.classList.remove('hidden');
+        resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      checkedBoxes.forEach(checkbox => {
+        if (scores.hasOwnProperty(checkbox.value)) {
+          scores[checkbox.value]++;
+        }
+      });
+
+      const scoreEntries = Object.entries(scores)
+        .sort(([, aScore], [, bScore]) => bScore - aScore);
+
+      scoreList.innerHTML = '';
+      scoreEntries.forEach(([archetype, score]) => {
+          const listItem = document.createElement('li');
+          listItem.textContent = `${archetype}: ${score}`;
+          scoreList.appendChild(listItem);
+      });
+      allScoresDiv.style.display = 'block';
+
+      let finalTitle = "Your Archetype Result";
+      let finalSummary = "We couldn't determine a primary combination. Try selecting more options!";
+
+      if (scoreEntries.length > 0 && scoreEntries[0][1] > 0) {
+        const primaryArchetype = scoreEntries[0][0];
+        if (scoreEntries.length > 1 && scoreEntries[1][1] > 0) {
+          const secondaryArchetype = scoreEntries[1][0];
+          const combinationKey = getCombinationKey(primaryArchetype, secondaryArchetype);
+          const combination = combinationsData[combinationKey];
+          if (combination) {
+            finalTitle = combination.name;
+            finalSummary = combination.summary;
+          } else {
+            finalTitle = `${primaryArchetype} & ${secondaryArchetype}`;
+            finalSummary = `You strongly exhibit traits of both the ${primaryArchetype} and ${secondaryArchetype}. Explore how these strengths can work together!`;
+          }
+        } else {
+          finalTitle = `Primarily ${primaryArchetype}`;
+          finalSummary = `Your dominant archetype is strongly ${primaryArchetype}.`;
+        }
+      }
+
+      resultTitle.textContent = finalTitle;
+      currentArchetypeResultTitle = finalTitle; // Store for PDF request
+      resultSummary.textContent = finalSummary;
+      resultsDiv.classList.remove('hidden');
+      pdfDownloadSection.classList.remove('hidden'); // Show PDF download button
+      pdfEmailForm.classList.add('hidden'); // Ensure form is hidden initially
+      showPdfFormBtn.classList.remove('hidden'); // Ensure button to show form is visible
+      pdfFormMessage.textContent = ''; // Clear any previous messages
+      resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    resetQuizBtn.addEventListener('click', function() {
+        quizForm.reset();
+        resultsDiv.classList.add('hidden');
+        pdfDownloadSection.classList.add('hidden'); // Hide PDF section on reset
+        pdfEmailForm.classList.add('hidden');
+        showPdfFormBtn.classList.remove('hidden');
+        pdfFormMessage.textContent = '';
+        currentArchetypeResultTitle = '';
+        const quizContainer = document.getElementById('archetypeQuiz');
+        if(quizContainer) {
+            quizContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+
+    // NEW: PDF Form Logic
+    showPdfFormBtn.addEventListener('click', () => {
+        showPdfFormBtn.classList.add('hidden');
+        pdfEmailForm.classList.remove('hidden');
+        pdfEmailInput.focus();
+    });
+
+    cancelPdfFormBtn.addEventListener('click', () => {
+        pdfEmailForm.classList.add('hidden');
+        showPdfFormBtn.classList.remove('hidden');
+        pdfFormMessage.textContent = '';
+        pdfFormMessage.className = 'pdf-form-message'; // Reset class
+    });
+
+    pdfEmailForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const email = pdfEmailInput.value.trim();
+        pdfFormMessage.textContent = '';
+        pdfFormMessage.className = 'pdf-form-message'; // Reset class
+
+        if (!email) {
+            pdfFormMessage.textContent = 'Please enter your email address.';
+            pdfFormMessage.classList.add('error');
+            return;
+        }
+        // Basic email validation regex (similar to backend but good for quick client check)
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            pdfFormMessage.textContent = 'Please enter a valid email address.';
+            pdfFormMessage.classList.add('error');
+            return;
+        }
+
+        sendPdfBtn.disabled = true;
+        sendPdfBtn.textContent = 'Sending...';
+
+        try {
+            const response = await fetch('/api/request-pdf', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: email, archetypeResult: currentArchetypeResultTitle }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                pdfFormMessage.textContent = result.message || 'Success! Check your email.';
+                pdfFormMessage.classList.add('success');
+                pdfEmailInput.value = ''; // Clear input on success
+                // Optionally hide the form and show the button again after a delay, or keep message
+                setTimeout(() => {
+                    pdfEmailForm.classList.add('hidden');
+                    showPdfFormBtn.classList.remove('hidden');
+                    showPdfFormBtn.textContent = 'PDF Sent! Download Another?'; // Or similar
+                }, 3000);
+            } else {
+                pdfFormMessage.textContent = result.message || 'An error occurred. Please try again.';
+                pdfFormMessage.classList.add('error');
+            }
+        } catch (error) {
+            console.error('Error submitting PDF request:', error);
+            pdfFormMessage.textContent = 'Network error. Please try again.';
+            pdfFormMessage.classList.add('error');
+        } finally {
+            sendPdfBtn.disabled = false;
+            sendPdfBtn.textContent = 'Send PDF to My Email';
+        }
+    });
+  });
+</script>
