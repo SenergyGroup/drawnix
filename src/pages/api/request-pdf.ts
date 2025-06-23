@@ -1,58 +1,88 @@
 // src/pages/api/request-pdf.ts
+export const prerender = false;
+
 import type { APIRoute } from 'astro';
 import { Resend } from 'resend';
 
+// ---- ENV VARS ----
 const resendApiKey = import.meta.env.RESEND_API_KEY;
 const emailFromAddress = import.meta.env.EMAIL_FROM_ADDRESS;
-const siteUrl = import.meta.env.SITE_URL || Astro.url.origin; // SITE_URL from .env or derive
-const pdfFileName = import.meta.env.PDF_URL || 'Drawnix_Archetype_Full_Guide.pdf';
+const pdfFileNameFromEnv = import.meta.env.PDF_URL;
+const mailerLiteApiKey = import.meta.env.MAILERLITE_API_KEY; // For MailerLite
 
+// Initial console errors for critical missing keys
 if (!resendApiKey) {
-  console.error("RESEND_API_KEY is not set.");
+  console.error("CRITICAL: RESEND_API_KEY is not set.");
 }
 if (!emailFromAddress) {
-  console.error("EMAIL_FROM_ADDRESS is not set.");
+  console.error("CRITICAL: EMAIL_FROM_ADDRESS is not set.");
+}
+if (!mailerLiteApiKey) {
+  console.warn("WARNING: MAILERLITE_API_KEY is not set. MailerLite integration will be skipped if consent is given.");
 }
 
-const resend = new Resend(resendApiKey);
+/* ---------- helpers ---------- */
+const resend = new Resend(resendApiKey); // Initialize Resend only if key exists
 
-// Basic email validation
+// Basic email validation (from your current code)
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
-export const POST: APIRoute = async ({ request }) => {
+/* ---------- handler ---------- */
+export const POST: APIRoute = async ({ request, url }) => {
+  /* ----- basic config checks ----- */
   if (!resendApiKey || !emailFromAddress) {
+    console.error('Server configuration error: RESEND_API_KEY or EMAIL_FROM_ADDRESS missing.');
     return new Response(
-      JSON.stringify({ message: 'Server configuration error.' }),
+      JSON.stringify({ message: 'Server configuration error. Please check server logs.' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
+  let email: string;
+  let archetypeResult: string;
+  let consent: boolean;
+
   try {
     const data = await request.json();
-    const email = data.email;
-    const archetypeResult = data.archetypeResult || "Your Archetype"; // Optional: pass the user's result title
+    email = data.email;
+    archetypeResult = data.archetypeResult || "Your Archetype";
+    consent = data.consent === true; // Ensure it's explicitly true
 
-    if (!email || !isValidEmail(email)) {
-      return new Response(
-        JSON.stringify({ message: 'Invalid email address provided.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+  } catch (e) {
+    console.error("Error parsing request body:", e);
+    return new Response(
+      JSON.stringify({ message: 'Invalid request body. Expected JSON.' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 
-    const pdfUrl = `${siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl}/${pdfFileName}`;
+  if (!email || !isValidEmail(email)) {
+    return new Response(
+      JSON.stringify({ message: 'Invalid email address provided.' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 
-    // Here you could also save the email to your database or mailing list
-    // console.log(`Email captured: ${email} for result: ${archetypeResult}`);
+  /* ----- build PDF link (using concise version from ChatGPT, adapted from your logic) ----- */
+  const siteUrl = import.meta.env.SITE_URL || url.origin;
+  const pdfUrl  =
+    pdfFileNameFromEnv?.match(/^https?:\/\//)
+      ? pdfFileNameFromEnv
+      : `${siteUrl.replace(/\/$/, '')}/${(pdfFileNameFromEnv || 'Drawnix_Archetype_Full_Guide.pdf').replace(/^\//, '')}`;
 
-    const { data: sendData, error: sendError } = await resend.emails.send({
-      from: `Drawnix Archetypes <${emailFromAddress}>`, // Sender name and email
+  console.log(`Attempting to send PDF to ${email} for archetype ${archetypeResult}. PDF URL: ${pdfUrl}. Consent: ${consent}`);
+
+  try {
+    /* ----- 1 – send PDF instantly via Resend ----- */
+    const { data: sendData, error: resendError } = await resend.emails.send({
+      from: `Digital Archetypes <${emailFromAddress}>`,
       to: [email],
-      subject: `Your Drawnix Archetype Guide: ${archetypeResult}`,
+      subject: `Your Digital Archetype Guide: ${archetypeResult}`,
       html: `
-        <h1>Here's your Drawnix Archetype Guide!</h1>
+        <h1>Here's your Digital Archetype Guide!</h1>
         <p>Thank you for discovering your archetype. We hope this guide helps you on your digital building journey.</p>
         <p>You identified as: <strong>${archetypeResult}</strong></p>
         <p>Click the link below to download your full PDF guide:</p>
@@ -60,16 +90,57 @@ export const POST: APIRoute = async ({ request }) => {
         <p>If the button doesn't work, copy and paste this link into your browser: ${pdfUrl}</p>
         <br>
         <p>Best regards,</p>
-        <p>The Drawnix Team</p>
+        <p>Drawnix</p>
       `,
     });
 
-    if (sendError) {
-      console.error('Resend API Error:', sendError);
+    if (resendError) {
+      console.error('Resend API Error:', resendError);
       return new Response(
-        JSON.stringify({ message: 'Failed to send email. Please try again later.' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ message: 'Failed to send email via Resend. Please try again later.' }),
+        { status: 502, headers: { 'Content-Type': 'application/json' } } // 502 Bad Gateway if external service fails
       );
+    }
+
+    console.log(`Resend success for ${email}:`, sendData?.id);
+
+    /* ----- 2 – add to MailerLite if opted in ----- */
+    if (consent && mailerLiteApiKey) {
+      console.log(`Consent given by ${email}. Attempting to add to MailerLite.`);
+      try {
+        const mailerlitePayload = {
+          email,
+          status: 'active', // Use "unconfirmed" to trigger double-opt-in email
+          groups: ['157945024413173186'], // IMPORTANT: Replace with your actual Group ID (as a string, e.g., "12345"). Or omit/use [] if not assigning to a group.
+          fields: { archetype: archetypeResult }, // Ensure 'archetype' is a custom field in MailerLite
+          resubscribe: true, // Set to true if you want to reactivate previously unsubscribed or bounced emails
+        };
+        // console.log("MailerLite Payload:", JSON.stringify(mailerlitePayload, null, 2));
+
+        const mailerliteResponse = await fetch('https://connect.mailerlite.com/api/subscribers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${mailerLiteApiKey}`,
+          },
+          body: JSON.stringify(mailerlitePayload),
+        });
+
+        if (!mailerliteResponse.ok) {
+          const errorBody = await mailerliteResponse.text(); // Get text for more flexible error logging
+          console.error(`MailerLite API Error (${mailerliteResponse.status}):`, errorBody);
+          // Log this error, but don't fail the whole request since the PDF was sent.
+        } else {
+          const successBody = await mailerliteResponse.json().catch(() => ({})); // Parse JSON if possible
+          console.log(`Email ${email} successfully processed by MailerLite:`, successBody?.data?.id || 'OK');
+        }
+      } catch (mlError) {
+        console.error('Error during MailerLite API call:', mlError);
+        // Log this error, but don't fail the whole request.
+      }
+    } else if (consent && !mailerLiteApiKey) {
+      console.warn(`Consent given by ${email}, but MAILERLITE_API_KEY is not configured. Skipping MailerLite.`);
     }
 
     return new Response(
@@ -77,10 +148,10 @@ export const POST: APIRoute = async ({ request }) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
-    console.error('Request PDF Error:', error);
+  } catch (error) { // Catch any other unexpected errors during the process
+    console.error('Generic Request PDF Error:', error);
     return new Response(
-      JSON.stringify({ message: 'An unexpected error occurred.' }),
+      JSON.stringify({ message: 'An unexpected error occurred processing your request.' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

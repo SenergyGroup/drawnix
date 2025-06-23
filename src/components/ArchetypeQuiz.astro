@@ -58,6 +58,15 @@ import { questions, archetypes, combinationsData, getCombinationKey } from '../d
             <div class="pdf-form-field">
                 <label for="pdfEmailInput" class="sr-only">Your Email Address</label>
                 <input type="email" id="pdfEmailInput" placeholder="you@example.com" required class="pdf-email-input"/>
+                <small class="pdf-notice">
+                  We’ll use your e-mail to send the PDF and occasional related tips.
+                  Unsubscribe anytime. Read our
+                  <a href="/privacy-policy" target="_blank">Privacy Policy</a>.
+                </small>
+
+                <label class="pdf-notice">
+                  <input type="checkbox" name="consent"> Yes, e-mail me future resources & offers
+                </label>            
             </div>
             <button type="submit" id="sendPdfBtn" class="quiz-button quiz-button-submit">Send PDF to My Email</button>
             <button type="button" id="cancelPdfFormBtn" class="quiz-button quiz-button-cancel">Cancel</button>
@@ -99,6 +108,14 @@ import { questions, archetypes, combinationsData, getCombinationKey } from '../d
     padding-top: 1.5rem;
     border-top: 1px solid var(--quiz-border-color);
     text-align: center;
+  }
+
+  .pdf-notice {
+    display: block;          /* forces full-width */
+    margin-top: 0.5rem;
+    font-size: 0.75rem;      /* same as text-xs */
+    color: #6b7280;          /* same as text-gray-600 */
+    text-align: left;        /* overrides parent centering */
   }
 
   .pdf-email-form {
@@ -425,11 +442,12 @@ import { questions, archetypes, combinationsData, getCombinationKey } from '../d
     const sendPdfBtn = document.getElementById('sendPdfBtn');
     const cancelPdfFormBtn = document.getElementById('cancelPdfFormBtn');
     const pdfFormMessage = document.getElementById('pdfFormMessage');
+    const consentCheckbox = pdfEmailForm.querySelector('input[name="consent"]');
 
     let currentArchetypeResultTitle = ''; // To store the result title
 
     if (!quizForm || !resultsDiv /* ... include all original elements ... */ ||
-        !pdfDownloadSection || !showPdfFormBtn || !pdfEmailForm || !pdfEmailInput || !sendPdfBtn || !cancelPdfFormBtn || !pdfFormMessage ) {
+        !pdfDownloadSection || !showPdfFormBtn || !pdfEmailForm || !pdfEmailInput || !sendPdfBtn || !cancelPdfFormBtn || !pdfFormMessage || !consentCheckbox) {
         console.error("Quiz or PDF component elements not found. Check IDs.");
         return;
     }
@@ -506,11 +524,21 @@ import { questions, archetypes, combinationsData, getCombinationKey } from '../d
     resetQuizBtn.addEventListener('click', function() {
         quizForm.reset();
         resultsDiv.classList.add('hidden');
-        pdfDownloadSection.classList.add('hidden'); // Hide PDF section on reset
-        pdfEmailForm.classList.add('hidden');
-        showPdfFormBtn.classList.remove('hidden');
-        pdfFormMessage.textContent = '';
+        pdfDownloadSection.classList.add('hidden');
+        pdfEmailForm.classList.add('hidden'); // Ensure form is hidden
+        
+        // --- RESET showPdfFormBtn FULLY ---
+        showPdfFormBtn.classList.remove('hidden'); // Ensure it's visible for next time
+        showPdfFormBtn.textContent = 'Download Full PDF Guide'; // Reset text
+        showPdfFormBtn.disabled = false; // Re-enable
+        // if you added a custom class, remove it:
+        // showPdfFormBtn.classList.remove('button-sent-final');
+        // --- END RESET ---
+        
+        pdfFormMessage.textContent = ''; // Clear any messages
+        pdfFormMessage.className = 'pdf-form-message'; // Reset message classes
         currentArchetypeResultTitle = '';
+
         const quizContainer = document.getElementById('archetypeQuiz');
         if(quizContainer) {
             quizContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -534,6 +562,7 @@ import { questions, archetypes, combinationsData, getCombinationKey } from '../d
     pdfEmailForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const email = pdfEmailInput.value.trim();
+        const consentGiven = consentCheckbox ? consentCheckbox.checked : false;
         pdfFormMessage.textContent = '';
         pdfFormMessage.className = 'pdf-form-message'; // Reset class
 
@@ -558,7 +587,10 @@ import { questions, archetypes, combinationsData, getCombinationKey } from '../d
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email: email, archetypeResult: currentArchetypeResultTitle }),
+                body: JSON.stringify({ 
+                  email: email, 
+                  archetypeResult: currentArchetypeResultTitle, 
+                  consent: consentGiven }),
             });
 
             const result = await response.json();
@@ -567,15 +599,25 @@ import { questions, archetypes, combinationsData, getCombinationKey } from '../d
                 pdfFormMessage.textContent = result.message || 'Success! Check your email.';
                 pdfFormMessage.classList.add('success');
                 pdfEmailInput.value = ''; // Clear input on success
-                // Optionally hide the form and show the button again after a delay, or keep message
-                setTimeout(() => {
-                    pdfEmailForm.classList.add('hidden');
-                    showPdfFormBtn.classList.remove('hidden');
-                    showPdfFormBtn.textContent = 'PDF Sent! Download Another?'; // Or similar
-                }, 3000);
+                if (consentCheckbox) consentCheckbox.checked = false;
+                
+                // --- MODIFIED BEHAVIOR ---
+                pdfEmailForm.classList.add('hidden'); // Hide the email input form
+                
+                // Keep the original button visible but update its state to "PDF Sent!" and disable it
+                showPdfFormBtn.classList.remove('hidden'); 
+                showPdfFormBtn.textContent = 'PDF Sent!';
+                showPdfFormBtn.disabled = true; 
+                // You could add a specific class for styling if needed:
+                // showPdfFormBtn.classList.add('button-sent-final'); 
+                // --- END MODIFIED BEHAVIOR ---
+
             } else {
                 pdfFormMessage.textContent = result.message || 'An error occurred. Please try again.';
                 pdfFormMessage.classList.add('error');
+                // Ensure the "Send PDF to My Email" button inside the form is re-enabled on error
+                sendPdfBtn.disabled = false;
+                sendPdfBtn.textContent = 'Send PDF to My Email';
             }
         } catch (error) {
             console.error('Error submitting PDF request:', error);
