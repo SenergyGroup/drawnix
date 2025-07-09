@@ -122,8 +122,9 @@ const lightbulbIcon = "/images/icon-lightbulb.svg";
 
     .tools-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 350px));
       gap: 1.5rem;
+      justify-content: center;
     }
     .tool-card {
       background-color: var(--card-bg-color);
@@ -156,6 +157,29 @@ const lightbulbIcon = "/images/icon-lightbulb.svg";
       width: 100%; /* Button takes full width of card */
       margin-top: auto; /* Pushes button to bottom if p doesn't fill space */
     }
+      .subscribe-form {
+    display: flex;
+    flex-wrap: wrap; /* Allows items to wrap on smaller screens */
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .subscribe-form input[type="email"] {
+    flex-grow: 1; /* Allows input to take up available space */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-width: 200px; /* Ensures input doesn't get too small */
+  }
+  .form-message {
+    margin-top: 10px;
+    font-size: 0.9em;
+  }
+  .form-message.success {
+    color: green;
+  }
+  .form-message.error {
+    color: red;
+  }
 
   </style>
 </head>
@@ -169,7 +193,18 @@ const lightbulbIcon = "/images/icon-lightbulb.svg";
           <p>
             Join me as-build a digital business from $0, sharing every step, tool, and lesson along the way. Learn beside me and grab some free resources for your own journey.
           </p>
-          <a href="#subscribe" class="btn">Join the Journey (Get Updates & Tools)</a>
+           <form id="journey-form" class="subscribe-form">
+            <input
+              type="email"
+              id="journey-email"
+              name="email"
+              placeholder="Enter your email address"
+              required
+            />
+            <button type="submit" class="btn">Join the Journey (Get Updates & Tools)</button>
+          </form>
+          <!-- This div will show success or error messages -->
+          <div id="journey-form-message" class="form-message"></div>
         </div>
         <div class="hero-image">
           <img src={thermometerImg} alt="Business growth thermometer graphic" />
@@ -198,27 +233,11 @@ const lightbulbIcon = "/images/icon-lightbulb.svg";
         <div class="tools-grid">
           <article class="tool-card">
             <div class="tool-card-header">
-              <div class="tool-card-icon"><img src={flowchartIcon} alt="Flowchart icon" /></div>
-              <h4>AI Decision Flowchart</h4>
+              <div class="tool-card-icon"><img src="images/quiz.svg" alt"quiz icon" height="45" width="45"></div>
+              <h4>Digital Archetype Quiz</h4>
             </div>
-            <p>Visualize your choices ad paths</p>
-            <a href="#tool-flowchart" class="btn">Get Tool</a>
-          </article>
-          <article class="tool-card">
-            <div class="tool-card-header">
-              <div class="tool-card-icon"><img src={checklistIcon} alt="Checklist icon" /></div>
-              <h4>Productivity Checklist</h4>
-            </div>
-            <p>Boost your efficiency with this handy checklist</p>
-            <a href="#tool-checklist" class="btn">Get Tool</a>
-          </article>
-          <article class="tool-card">
-            <div class="tool-card-header">
-              <div class="tool-card-icon"><img src={lightbulbIcon} alt="Lightbulb icon" /></div>
-              <h4>Brainstorming Guide</h4>
-            </div>
-            <p>A guide to generating ideas as creative solutions</p>
-            <a href="#tool-guide" class="btn">Get Tool</a>
+            <p>What digital business makes sense for you?</p>
+            <a href="/resources/getting-started/" class="btn">Take the Quiz</a>
           </article>
         </div>
       </section>
@@ -227,3 +246,57 @@ const lightbulbIcon = "/images/icon-lightbulb.svg";
   <Footer />
 </body>
 </html>
+
+<script>
+  // Get the form and message elements from the DOM
+  const form = document.getElementById('journey-form');
+  const messageDiv = document.getElementById('journey-form-message');
+
+  form.addEventListener('submit', async (event) => {
+    // 1. Prevent the default form submission (which reloads the page)
+    event.preventDefault();
+
+    // Clear previous messages and disable the button to prevent multiple submissions
+    messageDiv.textContent = '';
+    messageDiv.className = 'form-message';
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+
+    // 2. Get the email from the input field
+    const formData = new FormData(form);
+    const email = formData.get('email');
+
+    try {
+      // 3. Send the data to our new API endpoint
+      const response = await fetch('/api/subscribe-journey', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        // If the server returns an error (4xx or 5xx)
+        throw new Error(result.message || 'An unknown error occurred.');
+      }
+
+      // 4. Handle a successful response
+      messageDiv.textContent = result.message;
+      messageDiv.classList.add('success');
+      form.reset(); // Clear the form input
+
+    } catch (error) {
+      // 5. Handle any errors (network issue or server error)
+      messageDiv.textContent = error.message;
+      messageDiv.classList.add('error');
+    } finally {
+      // 6. Re-enable the button
+      submitButton.disabled = false;
+      submitButton.textContent = 'Join the Journey (Get Updates & Tools)';
+    }
+  });
+</script>
