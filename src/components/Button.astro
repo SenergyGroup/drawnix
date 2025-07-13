@@ -1,0 +1,13 @@
+---
+// src/components/Button.astro
+interface Props {
+  href: string;
+  className?: string; // Optional prop to add more classes if needed
+}
+
+const { href, className } = Astro.props;
+---
+
+<a href={href} class:list={["btn", className]}>
+  <slot /> <!-- This is where the button text will go -->
+</a>

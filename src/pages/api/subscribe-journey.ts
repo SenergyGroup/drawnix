@@ -18,43 +18,39 @@ function isValidEmail(email: string): boolean {
 
 // ---- API Handler ----
 export const POST: APIRoute = async ({ request }) => {
-  // 1. Check for server configuration errors first
   if (!mailerLiteApiKey) {
-    return new Response(
-      JSON.stringify({ message: 'Server configuration error.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ message: 'Server configuration error.' }), { status: 500 });
   }
 
-  // 2. Get and validate the email from the request body
+  // 1. Get and validate the data from the request body
   let email: string;
+  let consent: boolean;
   try {
     const data = await request.json();
     email = data.email;
+    consent = data.consent; // ✅ Get the consent value
   } catch (e) {
-    return new Response(
-      JSON.stringify({ message: 'Invalid request format.' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ message: 'Invalid request format.' }), { status: 400 });
   }
 
+  // 2. ✅ SERVER-SIDE VALIDATION: Check for both email and consent
   if (!email || !isValidEmail(email)) {
-    return new Response(
-      JSON.stringify({ message: 'Please provide a valid email address.' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ message: 'Please provide a valid email address.' }), { status: 400 });
+  }
+  
+  // This is the crucial gatekeeper check.
+  if (consent !== true) {
+    return new Response(JSON.stringify({ message: 'Consent is required to subscribe.' }), { status: 400 });
   }
 
-  console.log(`Attempting to subscribe ${email} to the "Journey" list.`);
+  console.log(`Consent received for ${email}. Attempting to subscribe...`);
 
-  // 3. Prepare the payload for MailerLite
+  // 3. Prepare the payload for MailerLite (using your real group ID)
   const mailerlitePayload = {
     email,
-    // IMPORTANT: Replace with the Group ID for your "Journey" subscribers.
-    // Find this in your MailerLite account under Subscribers -> Groups.
-    groups: ['YOUR_JOURNEY_GROUP_ID'], 
-    status: 'active', // Use 'active' for single opt-in, or 'unconfirmed' for double opt-in
-    resubscribe: true, // Reactivate if they were previously unsubscribed
+    groups: ['159493465834522596'], // Using your actual group ID
+    status: 'active',
+    resubscribe: true,
   };
 
   // 4. Make the API call to MailerLite
@@ -70,29 +66,18 @@ export const POST: APIRoute = async ({ request }) => {
     });
 
     if (!mailerliteResponse.ok) {
-      // If MailerLite returns an error, log it and inform the user.
       const errorBody = await mailerliteResponse.json();
       console.error('MailerLite API Error:', errorBody);
-      // You can customize the user-facing message based on the error if you wish
       const errorMessage = errorBody?.message || 'Could not subscribe. The email might be invalid or already subscribed.';
-      return new Response(
-        JSON.stringify({ message: errorMessage }),
-        { status: mailerliteResponse.status, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ message: errorMessage }), { status: mailerliteResponse.status });
     }
     
     // 5. Return a success response
     console.log(`Successfully subscribed ${email} to MailerLite.`);
-    return new Response(
-      JSON.stringify({ message: 'Success! You have joined the journey. Check your inbox!' }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ message: 'Success! Check your inbox!' }), { status: 200 });
 
   } catch (error) {
     console.error('Failed to call MailerLite API:', error);
-    return new Response(
-      JSON.stringify({ message: 'An unexpected error occurred. Please try again later.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ message: 'An unexpected error occurred.' }), { status: 500 });
   }
 };

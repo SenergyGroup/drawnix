@@ -36,9 +36,10 @@ const pageDescription = "Check out the latest videos from " + SITE_TITLE; // Or 
             /* For the first item full width, then 2 columns: */
             /* grid-template-columns: 1fr; (default, then changed by :not(:first-child) context) */
             /* Or simply a repeating grid: */
-            grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); /* Responsive columns */
+            grid-template-columns: repeat(auto-fit, minmax(280px, 330px)); /* Responsive columns */
             gap: 2rem; /* Gap between video cards */
             list-style-type: none;
+            justify-content: center;
             margin: 0;
             padding: 0;
         }

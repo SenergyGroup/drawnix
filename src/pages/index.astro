@@ -201,6 +201,15 @@ const lightbulbIcon = "/images/icon-lightbulb.svg";
               placeholder="Enter your email address"
               required
             />
+            <div class="form-consent-notice">
+              <label>
+                <input type="checkbox" id="journey-consent" name="consent" required />
+                <span>Yes, email me future resources & updates.</span>
+              </label>
+              <small style="padding-left: 1.7em; display: block; margin-top: 4px;">
+                Unsubscribe anytime. Read our <a href="/privacy-policy" target="_blank">Privacy Policy</a>.
+              </small>
+            </div>
             <button type="submit" class="btn">Join the Journey (Get Updates & Tools)</button>
           </form>
           <!-- This div will show success or error messages -->
@@ -211,8 +220,10 @@ const lightbulbIcon = "/images/icon-lightbulb.svg";
         </div>
       </section>
 
+      <!-- Video section for when I have my first video up -->
+      <!--
       <section class="content-section easel-section">
-        <h2 class="section-title">Fresh Off the Easel!</h2>
+        <h2 class="section-title">Latest Video</h2>
         <div class="easel-grid">
           <div class="video-placeholder">
             <img src={videoPlaceholderImg} alt="Latest video content placeholder" />
@@ -227,6 +238,7 @@ const lightbulbIcon = "/images/icon-lightbulb.svg";
           </div>
         </div>
       </section>
+      -->
 
       <section class="content-section tools-section">
         <h2 class="section-title">Grab Your Free Tools!</h2>
@@ -253,44 +265,45 @@ const lightbulbIcon = "/images/icon-lightbulb.svg";
   const messageDiv = document.getElementById('journey-form-message');
 
   form.addEventListener('submit', async (event) => {
-    // 1. Prevent the default form submission (which reloads the page)
+    // 1. Prevent the default form submission
     event.preventDefault();
 
-    // Clear previous messages and disable the button to prevent multiple submissions
     messageDiv.textContent = '';
     messageDiv.className = 'form-message';
     const submitButton = form.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.textContent = 'Submitting...';
 
-    // 2. Get the email from the input field
+    // 2. Get the data from the form
     const formData = new FormData(form);
     const email = formData.get('email');
+    // ✅ Get the consent checkbox status. It will be true if checked, false if not.
+    const consent = formData.has('consent');
 
     try {
-      // 3. Send the data to our new API endpoint
+      // 3. Send the data (including consent) to our API endpoint
       const response = await fetch('/api/subscribe-journey', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        // ✅ Add the consent value to the request body
+        body: JSON.stringify({ email, consent }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        // If the server returns an error (4xx or 5xx)
         throw new Error(result.message || 'An unknown error occurred.');
       }
 
       // 4. Handle a successful response
       messageDiv.textContent = result.message;
       messageDiv.classList.add('success');
-      form.reset(); // Clear the form input
+      form.reset(); // Clear the form inputs (including the checkbox)
 
     } catch (error) {
-      // 5. Handle any errors (network issue or server error)
+      // 5. Handle any errors
       messageDiv.textContent = error.message;
       messageDiv.classList.add('error');
     } finally {
