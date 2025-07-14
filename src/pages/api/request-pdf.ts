@@ -7,7 +7,7 @@ import { Resend } from 'resend';
 // ---- ENV VARS ----
 const resendApiKey = import.meta.env.RESEND_API_KEY;
 const emailFromAddress = import.meta.env.EMAIL_FROM_ADDRESS;
-const pdfFileNameFromEnv = import.meta.env.PDF_URL;
+const pdfFileNameFromEnv = "pdf/Digital Archetypes.pdf";
 const mailerLiteApiKey = import.meta.env.MAILERLITE_API_KEY; // For MailerLite
 
 // Initial console errors for critical missing keys
